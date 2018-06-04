@@ -25,8 +25,6 @@ def _pg_result_type(presto_type):
         return "double precision"
     elif JSON_TYPE_PATTERN.match(presto_type):
         return "json"  # TODO record or anyarray???
-    elif presto_type == "tinyint":
-        return "integer"
     else:
         # assuming Presto and PostgreSQL use the same SQL standard name
         return presto_type
@@ -41,8 +39,6 @@ def _pg_table_type(presto_type):
         return "double precision"
     elif JSON_TYPE_PATTERN.match(presto_type):
         return "json"  # TODO record or anyarray???
-    elif presto_type == "tinyint":
-        return "integer"
     else:
         # assuming Presto and PostgreSQL use the same SQL standard name
         return presto_type
@@ -111,16 +107,6 @@ def _get_session_search_path_array():
     rows = plpy.execute("select ('{' || current_setting('search_path') || '}')::text[]")
     return rows[0].values()[0]
 
-NULL_PATTERN = dict({'\0':None})
-
-def remove_null(bs):
-    if isinstance(bs, str):
-        return bs.translate(None, '\0')
-    elif isinstance(bs, unicode):
-        return bs.translate(NULL_PATTERN)
-    else:
-        return bs
-
 class QueryAutoClose(object):
     def __init__(self, query):
         self.query = query
@@ -139,10 +125,7 @@ class QueryAutoCloseIterator(object):
         return self
 
     def next(self):
-        row = next(self.gen)
-        for i, v in enumerate(row):
-            row[i] = remove_null(v)
-        return row
+        return next(self.gen)
 
 class QueryAutoCloseIteratorWithJsonConvert(QueryAutoCloseIterator):
     def __init__(self, gen, query_auto_close, json_columns):
@@ -151,8 +134,6 @@ class QueryAutoCloseIteratorWithJsonConvert(QueryAutoCloseIterator):
 
     def next(self):
         row = next(self.gen)
-        for i, v in enumerate(row):
-            row[i] = remove_null(v)
         for i in self.json_columns:
             row[i] = json.dumps(row[i])
         return row
@@ -318,11 +299,7 @@ def setup_system_catalog(presto_server, presto_user, presto_catalog, presto_sche
             column_names = []
             column_types = []
             not_nulls = []
-
-            if len(columns) >= 1600:
-                plpy.warning("Table %s.%s contains more than 1600 columns. Some columns will be inaccessible" % (plpy.quote_ident(schema_name), plpy.quote_ident(table_name)))
-
-            for column in columns[0:1600]:
+            for column in columns:
                 column_names.append(column.name)
                 column_types.append(_pg_table_type(column.type))
                 not_nulls.append(not column.nullable)
