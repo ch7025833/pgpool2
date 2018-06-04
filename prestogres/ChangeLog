@@ -1,0 +1,237 @@
+
+2015-01-26 version 0.6.7:
+
+* Fixed "tuple concurrently updated" error happened when multiple threads
+  connect to the pg_database concurrently.
+* Rewrite "... AS FLOAT)" to "... AS double)" for better compatibility with
+  Tableau because Presto doesn't support FLOAT type
+
+
+2015-01-05 version 0.6.6:
+
+* setup_system_catalog renames PostgreSQL's system column names to avoid
+  "column name ... conflicts with a system column name" error. When a table or
+  query result includes reserved system column names, we need to add "_" at
+  the end of column names to access them (e.g. oid_, ctid_).
+  Reserved system column names are documented at
+  http://www.postgresql.org/docs/9.3/static/ddl-system-columns.html
+
+
+2015-01-04 version 0.6.5:
+
+* setup_system_catalog renames duplicated column names in case a table has
+  duplicated column names
+* Removed unnecessary CREATE ROLE call from prestogres_init_database function
+* Removed DROP FUNCTION call which was added for backward compatibility
+* Added test framework and some tests
+
+
+2014-12-16 version 0.6.4:
+
+* Changed default pid file path to /tmp
+* prestores-ctl searches postgres command from /usr/lib/postgresql/*/bin/ as
+  well as initdb to for Ubuntu environment
+* Fixed error handling when init_system_db_connection fails
+* s/pool_hba.conf/prestogres_hba.conf/ at the sample prestogres.conf file
+
+
+2014-12-04 version 0.6.3:
+
+* prestogres-ctl works with Python 2.6 on CentOS
+* Fixed a syntax error at setup.sql
+
+
+2014-12-04 version 0.6.2:
+
+This release updates PL/Python function signature. You need to run
+"$ prestogres-ctl migrate" command.
+
+* setup_system_catalog overwrites search_path to presto_schema to solve
+  inconsistency where search_path on PostgreSQL doesn't match with schema name
+  (X-Presto-Schema) on Presto.
+
+
+2014-12-04 version 0.6.1:
+
+* setup_system_catalog grants USAGE privilege so that pg_table_is_visible
+  function used by \d of psql command works
+* setup_system_catalog grants SELECT privilege so that
+  has_table_privilege(relname, 'select') returns true
+* Added a query rewriting rule from 'AS INTEGER)' to 'AS bigint)' to be
+  compatible with Tableau 8.2
+* Added a type conversion rule from Presto's array to PostgreSQL's json [#20]
+
+
+2014-12-03 version 0.6.0:
+
+* Login database name is used for presto_catalog and presto_schema by default.
+  default. You can use multiple catalogs using one Prestogres instance.
+* Added support for cursors. DECLARE starts a query on Presto, FETCH fetches
+  results, and CLOSE deletes the query from Presto.
+* Added support for multi-statement queries as long as there is only one Presto
+  query
+* Added support for INSERT INTO ... VALUES and INSERT INTO ... SELECT added
+  since Presto 0.75
+* Added support for CREATE TABLE and CREATE TABLE ... AS SELECT added
+  since Presto 0.73.
+* Added support for EXPLAIN.
+* BEGIN command in multi-statement query actually runs on PostgreSQL and returns
+  "BEGIN" notice message to clients to be compatible with postgresql-jdbc with
+  setAutoCommit(false) mode.
+
+
+2014-12-02 version 0.5.5:
+
+* Fixed 'duplicate key value violates unique constraint "pg_database_datname_index"'
+exception at setup_system_catalog. New code modifies pg_catalog.pg_proc where
+procname='current_database' rather than updating pg_database to fake behavior
+of current_database() function.
+
+
+2014-12-01 version 0.5.4:
+
+* "prestogres-ctl create" searches initdb comand from /usr/lib/postgresql/*/bin/initdb
+because Debian and Ubuntu don't have initdb in PATH environment variable
+
+
+2014-12-01 version 0.5.3:
+
+* Added support for querying ROW and MAP types using "json" type of PostgreSQL
+
+
+2014-12-01 version 0.5.2:
+
+* Canceling query works thanks for an upstream fix of pgpool2
+* Fixed support for ROW type
+
+
+2014-11-30 version 0.5.1:
+
+* Added missing prestogres/Makefile.in
+
+
+2014-11-30 version 0.5.0:
+
+This major release is not backward compatible. You need to recreate PostgreSQL
+database. See README.md file for instruction.
+
+* Based on pgpool-II 3.4 series
+* Creating tables runs only once for each session when a client runs a query
+for the first time
+* System catalog queries directly run on PostgreSQL without rewriting
+* System catalog queries can include duplicated column names
+* Presto query result won't be stored in a temporary table any mroe. Query
+results are returned to PostgreSQL using iterator
+* Configuration file path changed from <data_dir>/pgpool/pgpool.conf to
+$prefix/etc/prestogres.conf
+* Packaging uses configure & make instead of RubyGems
+* Removed dependency on Ruby
+* Added experimental support for ROW type added since Presto 0.82
+
+
+2014-07-18 version 0.4.8:
+
+You need to re-initialize PostgreSQL data directory when you upgrade.
+
+* Sort table and schema names to preserve oid even if presto connectors don't
+  gurantee order
+* System catalog queries create user and switches role to emulate login user
+  name
+* System catalog queries update pg_database to be consistent with login
+  databae name
+* Added support for information_schema
+* Added special type conversion rules to support information_schema
+
+
+2014-06-26 version 0.4.7:
+
+* Fixed a problem where multi-line queries don't run correctly
+
+
+2014-06-25 version 0.4.6:
+
+* Supports python-2.6 and CentOS 6 (@wyukawa++)
+* Ignores "invalid session state" error which was causing exception before
+* Ignores BEGIN and COMMIT commands which were causing exception before
+* Fixed error handling with protocol version 2 to send message back to clients
+
+
+2014-06-11 version 0.4.5:
+
+* Added prestogres_trust auth method
+* Added support for VARBINARY type introduced by Presto 0.69 by converting it
+  to bytea type
+* Added support for date, time and timestamp types with and without time zone
+* Getting table metadata ignores schema, table and column names longer than 63
+  (NAMEDATALEN - 1) characters which cause an error in PostgreSQL
+
+
+2014-05-12 version 0.4.4:
+
+* Send session variable 'timezone' to Presto using X-Presto-Time-Zone HTTP
+  header introduced by Presto 0.66 so that Presto uses the same time zone
+  setting with PostgreSQL.
+
+
+2014-04-22 version 0.4.3:
+
+* Updated default parameters related to connections so that pgpool-II can
+  always acquire a connection to cancel a running query.
+
+
+2014-03-19 version 0.4.2:
+
+* Send queries to PostgreSQL if they most likely cause parse erorr because
+  Presto doesn't return appropriate error code (42601 SYNTAX ERROR).
+* Cast Presto query results to PostgreSQL types explicitly when it inserts
+  themn to a temporary table to not cause "value too long for type character
+  varying(255)" exceptions
+
+
+2014-03-05 version 0.4.1:
+
+* Send queries to Presto if they include Presto's SQL syntax extension
+* Fixed build scripts
+
+
+2014-03-05 version 0.4.0:
+
+* Preserve OID of tables when clients SELECT from system catalogs
+* Increased maximum rewritten query length to 32768 bytes
+* Fixed protocol version v2 handling
+* Fixed 'too long error message' errors
+* Fixed build scripts
+* Add "LIMIT 1000" to "SELECT * FROM table" queries automatically
+  (ad-hoc fix for Tableau)
+
+
+2014-02-07 version 0.3.0:
+
+* Fixed system catalog queries to support multiple schemas
+* Removed presto_schema parameter from pgpool.conf
+* Use connecting database name as the default schema name
+* Updated type mapping to map varchar type of Presto to varchar(100)
+* Implemented query cache for system catalog queries
+* Improved prestogres-setup command to not listen on TCP socket
+* Improved prestogres-setup command to support -P option
+* Fixed build scripts to work with bundler
+* Fixed build scripts to work with RubyGems >= 1.8.26
+* Fixed "rake install" task
+
+
+2014-01-24 version 0.2.0:
+
+* Authentication mechanisms support pg_database and pg_user options to
+  overwrite connecting PostgreSQL database and role name
+* Forward error message from PostgreSQL to clients instead of killing the
+  session so that clients can know the reason
+* Reject 'P' (Parse) command to reject extended query protocol immediately
+* Enabled timeout in Presto HTTP client
+* Queries to system catalogs delete created tables by rollbacking
+subtransaction so that other sessions does not conflict
+
+
+2014-01-15 version 0.1.0:
+
+* First release
+
